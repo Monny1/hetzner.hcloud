@@ -51,7 +51,7 @@ options:
         elements: str
     firewalls:
         description:
-            - List of Firewall IDs that should be attached to the server on server creation.
+            - List of Firewalls (names or IDs) that should be attached to the server.
         type: list
         elements: str
     image:
@@ -568,7 +568,7 @@ class AnsibleHcloudServer(Hcloud):
             if wanted_firewalls is not None:
                 # Removing existing but not wanted firewalls
                 for current_firewall in self.hcloud_server.public_net.firewalls:
-                    if current_firewall.firewall.name not in wanted_firewalls:
+                    if current_firewall.firewall.name not in wanted_firewalls and current_firewall.firewall.id not in wanted_firewalls:
                         self._mark_as_changed()
                         if not self.module.check_mode:
                             r = FirewallResource(type="server", server=self.hcloud_server)
@@ -577,19 +577,23 @@ class AnsibleHcloudServer(Hcloud):
                                 a.wait_until_finished()
 
                 # Adding wanted firewalls that doesn't exist yet
-                for fname in wanted_firewalls:
+                for fnameid in wanted_firewalls:
                     found = False
                     for f in self.hcloud_server.public_net.firewalls:
-                        if f.firewall.name == fname:
+                        if f.firewall.name == fnameid or f.firewall.id == fnameid:
                             found = True
                             break
 
                     if not found:
                         self._mark_as_changed()
                         if not self.module.check_mode:
-                            fw = self.client.firewalls.get_by_name(fname)
+                            fw = self.client.firewalls.get_by_name(fnameid)
                             if fw is None:
-                                self.module.fail_json(msg="firewall %s was not found" % fname)
+                                # When firewall name is not available look for id instead
+                                fw = self.client.firewalls.get_by_id(fnameid)
+
+                            if fw is None:
+                                self.module.fail_json(msg="firewall %s was not found" % fnameid)
                             r = FirewallResource(type="server", server=self.hcloud_server)
                             actions = self.client.firewalls.apply_to_resources(fw, [r])
                             for a in actions:
