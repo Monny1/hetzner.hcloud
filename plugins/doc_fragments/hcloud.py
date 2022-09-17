@@ -20,7 +20,7 @@ options:
         default: https://api.hetzner.cloud/v1
         type: str
 requirements:
-  - hcloud-python >= 1.0.0
+  - hcloud-python >= 1.13.0
 seealso:
 - name: Documentation for Hetzner Cloud API
   description: Complete reference for the Hetzner Cloud API.
